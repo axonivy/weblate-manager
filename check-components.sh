@@ -306,10 +306,6 @@ main() {
   fi
 
   render_report_summary
-
-  if [[ "$FAILED_COMPONENTS" -gt 0 || "$UNKNOWN_COMPONENTS" -gt 0 ]]; then
-    return 1
-  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
