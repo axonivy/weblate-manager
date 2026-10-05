@@ -13,12 +13,12 @@ weblate_validate_configuration() {
 
   API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
   PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
-  API_ORIGIN=$(printf '%s\n' "$API_BASE" | sed -E 's#^(https?://[^/]+).*#\1#')
-
-  if [[ "$API_ORIGIN" == "$API_BASE" ]]; then
-    printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
-    return 2
-  fi
+if [[ "$API_BASE" =~ ^(https?://[^/]+)(/.*)?$ ]]; then
+  API_ORIGIN=${BASH_REMATCH[1]}
+else
+  printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
+  return 2
+fi
 }
 
 weblate_fetch_component_pages() {

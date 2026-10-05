@@ -27,7 +27,7 @@ choose_component_scope() {
   done
   choices+=('Quit')
 
-  PS3='Choose a component: '
+  PS3='Choose component(s) to update: '
   select choice in "${choices[@]}"; do
     if [[ ! "$REPLY" =~ ^[0-9]+$ ]] || ((REPLY < 1 || REPLY > ${#choices[@]})); then
       printf 'Choose one of the listed numbers.\n' >&2
@@ -57,7 +57,7 @@ choose_component_scope() {
     REFERENCE_CONFIG=${COMPONENTS[0]}
   else
     TARGET_COMPONENTS=("${COMPONENTS[$selected_index]}")
-    REFERENCE_CONFIG=${TARGET_COMPONENTS[0]}
+    REFERENCE_CONFIG=${COMPONENTS[$selected_index]}
   fi
 }
 
@@ -88,20 +88,14 @@ update_component() {
 }
 
 create_update_plan() {
-  local plan_file=$1 key=$2 field_type=$3 payload=$4
-  local component component_type component_url slug old_value new_value count=0
+  local plan_file=$1 key=$2 payload=$3
+  local component component_url slug old_value new_value count=0
 
   : >"$plan_file"
   for component in "${TARGET_COMPONENTS[@]}"; do
     if ! jq -e --arg key "$key" 'has($key)' >/dev/null <<<"$component"; then
       slug=$(jq -r '.slug // .name // "(unnamed)"' <<<"$component")
       printf 'Component %s has no key %s. Nothing was updated.\n' "$slug" "$key" >&2
-      return 2
-    fi
-    component_type=$(jq -r --arg key "$key" '.[$key] | type' <<<"$component")
-    if [[ "$component_type" != "$field_type" ]]; then
-      slug=$(jq -r '.slug // .name // "(unnamed)"' <<<"$component")
-      printf 'Component %s has a different type for %s. Nothing was updated.\n' "$slug" "$key" >&2
       return 2
     fi
     if ! component_url=$(weblate_component_api_url "$component"); then
@@ -125,7 +119,7 @@ create_update_plan() {
 }
 
 main() {
-  local components_file plan_file component key field_type payload new_value answer failed=0 selection_status
+  local components_file plan_file component key payload new_value answer failed=0 selection_status
 
   weblate_validate_configuration || return $?
 
@@ -164,7 +158,6 @@ main() {
     return 2
   fi
 
-  field_type=$(jq -r --arg key "$key" '.[$key] | type' <<<"$REFERENCE_CONFIG")
   if ! IFS= read -r -p 'New value (JSON): ' new_value; then
     printf 'No value entered.\n' >&2
     return 1
@@ -174,7 +167,7 @@ main() {
     return 2
   fi
 
-  create_update_plan "$plan_file" "$key" "$field_type" "$payload" || return $?
+  create_update_plan "$plan_file" "$key" "$payload" || return $?
 
   read -r -p 'Send this update to Weblate? [y/N] ' answer || answer=
   case "$answer" in
