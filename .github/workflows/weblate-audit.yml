@@ -1,0 +1,20 @@
+name: Weblate component audit
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run component audit
+        shell: bash
+        run: ./check-components.sh | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          WEBLATE_TOKEN: ${{ secrets.WEBLATE_TOKEN }}
