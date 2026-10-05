@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+EXPECTED_COMMIT_AGE=168
+EXPECTED_PUSH_ON_COMMIT=true
+EXPECTED_MERGE_STYLE=rebase
+EXPECTED_LANGUAGE_FILTER='^(en|de|ja|fr|es|it)$'
+
+usage() {
+  cat <<'EOF'
+Usage: WEBLATE_TOKEN=... ./check-components.sh [--help]
+
+Fetches every component in the axonivy Weblate project and prints a Markdown
+audit table. Override WEBLATE_API_URL or WEBLATE_PROJECT to target another
+Weblate instance or project. Save the report with:
+
+  WEBLATE_TOKEN=... ./check-components.sh > components.md
+EOF
+}
+
+validate_arguments() {
+  if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    usage
+    exit 0
+  fi
+
+  if [[ $# -ne 0 ]]; then
+    usage >&2
+    exit 2
+  fi
+}
+
+validate_configuration() {
+  if [[ -z "${WEBLATE_TOKEN:-}" ]]; then
+    printf 'WEBLATE_TOKEN is required.\n' >&2
+    return 2
+  fi
+
+  API_BASE=${WEBLATE_API_URL:-https://hosted.weblate.org/api}
+  PROJECT=${WEBLATE_PROJECT:-axonivy}
+  API_ORIGIN=$(printf '%s\n' "$API_BASE" | sed -E 's#^(https?://[^/]+).*#\1#')
+
+  if [[ "$API_ORIGIN" == "$API_BASE" ]]; then
+    printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
+    return 2
+  fi
+}
+
+fetch_component_pages() {
+  local next_url="${API_BASE%/}/projects/${PROJECT}/components/?page_size=1000"
+  local response
+
+  while [[ -n "$next_url" ]]; do
+    if [[ "$next_url" != "$API_ORIGIN"/* ]]; then
+      printf 'Refusing pagination URL outside Weblate API origin: %s\n' "$next_url" >&2
+      return 2
+    fi
+
+    response=$(curl --fail --silent --show-error \
+      --header "Authorization: Token ${WEBLATE_TOKEN}" \
+      --header 'Accept: application/json' \
+      "$next_url")
+
+    if ! jq -e '.results | type == "array"' >/dev/null <<<"$response"; then
+      printf 'Unexpected response from Weblate components API.\n' >&2
+      return 2
+    fi
+
+    jq -c '.results[]' <<<"$response" >>"$COMPONENTS_FILE"
+    next_url=$(jq -r '.next // empty' <<<"$response")
+  done
+}
+
+markdown_cell() {
+  printf '%s' "$1" | tr '\r\n' '  ' | sed 's/|/\\|/g'
+}
+
+markdown_link_label() {
+  printf '%s' "$1" \
+    | tr '\r\n' '  ' \
+    | sed -e 's/\\/\\\\/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' -e 's/|/\\|/g'
+}
+
+equality_status() {
+  local actual=$1
+  local expected=$2
+
+  if [[ -z "$actual" || "$actual" == "null" ]]; then
+    printf 'UNKNOWN'
+  elif [[ "$actual" == "$expected" ]]; then
+    printf 'PASS'
+  else
+    printf 'FAIL'
+  fi
+}
+
+license_status() {
+  local license=$1
+  local normalized_license
+  normalized_license=$(printf '%s' "$license" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+
+  if [[ -z "$license" ]]; then
+    printf 'UNKNOWN'
+  elif [[ "$normalized_license" == *apache*2* ]]; then
+    printf 'PASS'
+  else
+    printf 'FAIL'
+  fi
+}
+
+component_status() {
+  local status
+  local result=PASS
+
+  for status in "$@"; do
+    case "$status" in
+      FAIL) result=FAIL ;;
+      UNKNOWN)
+        if [[ "$result" == PASS ]]; then
+          result=UNKNOWN
+        fi
+        ;;
+    esac
+  done
+
+  printf '%s' "$result"
+}
+
+format_status() {
+  case "$1" in
+    PASS) printf '✅ PASS' ;;
+    FAIL) printf '❌ FAIL' ;;
+    UNKNOWN) printf '❔ UNKNOWN' ;;
+  esac
+}
+
+render_report_header() {
+  printf '# Weblate component audit\n\n'
+  printf -- '- Project: `%s`\n' "$(markdown_cell "$PROJECT")"
+  printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
+  printf -- '- Expected license: Apache 2.0\n'
+  printf -- '- Expected commit age: %s hours\n\n' "$EXPECTED_COMMIT_AGE"
+  printf '| Component | Slug | License | Commit age (hours) | Push on commit | Git strategy | Language filter | Result |\n'
+  printf '| --- | --- | --- | ---: | --- | --- | --- | --- |\n'
+}
+
+render_component_markdown() {
+  local component=$1
+  local name slug component_url license commit_age push_on_commit merge_style language_filter
+  local license_check age_check push_check strategy_check language_check status
+  local license_display commit_age_display push_display merge_display language_display
+
+  name=$(jq -r '.name // .slug // "(unnamed)"' <<<"$component")
+  slug=$(jq -r '.slug // "(missing)"' <<<"$component")
+  component_url=$(jq -r '.web_url // empty' <<<"$component")
+  if [[ -z "$component_url" ]]; then
+    component_url="${API_ORIGIN}/projects/${PROJECT}/${slug}/"
+  fi
+  license=$(jq -r '.license // empty' <<<"$component")
+  commit_age=$(jq -r 'if has("commit_pending_age") and .commit_pending_age != null then (.commit_pending_age | tostring) else empty end' <<<"$component")
+  push_on_commit=$(jq -r 'if has("push_on_commit") and .push_on_commit != null then (.push_on_commit | tostring | ascii_downcase) else empty end' <<<"$component")
+  merge_style=$(jq -r '.merge_style // empty | ascii_downcase' <<<"$component")
+  language_filter=$(jq -r '.language_regex // empty' <<<"$component")
+
+  license_check=$(license_status "$license")
+  age_check=$(equality_status "$commit_age" "$EXPECTED_COMMIT_AGE")
+  push_check=$(equality_status "$push_on_commit" "$EXPECTED_PUSH_ON_COMMIT")
+  strategy_check=$(equality_status "$merge_style" "$EXPECTED_MERGE_STYLE")
+  language_check=$(equality_status "$language_filter" "$EXPECTED_LANGUAGE_FILTER")
+  status=$(component_status "$license_check" "$age_check" "$push_check" "$strategy_check" "$language_check")
+
+  if [[ "$status" == FAIL ]]; then
+    FAILED_COMPONENTS=$((FAILED_COMPONENTS + 1))
+  elif [[ "$status" == UNKNOWN ]]; then
+    UNKNOWN_COMPONENTS=$((UNKNOWN_COMPONENTS + 1))
+  fi
+
+  license_display=${license:-unknown}
+  commit_age_display=${commit_age:-unknown}
+  push_display=${push_on_commit:-unknown}
+  merge_display=${merge_style:-unknown}
+  language_display=${language_filter:-unknown}
+
+  printf '| %s | `%s` | %s (%s) | %s (%s) | %s (%s) | %s (%s) | `%s` (%s) | **%s** |\n' \
+    "[$(markdown_link_label "$name")](<$(markdown_cell "$component_url")>)" \
+    "$(markdown_cell "$slug")" \
+    "$(markdown_cell "$license_display")" "$(format_status "$license_check")" \
+    "$(markdown_cell "$commit_age_display")" "$(format_status "$age_check")" \
+    "$(markdown_cell "$push_display")" "$(format_status "$push_check")" \
+    "$(markdown_cell "$merge_display")" "$(format_status "$strategy_check")" \
+    "$(markdown_cell "$language_display")" "$(format_status "$language_check")" \
+    "$(format_status "$status")"
+}
+
+render_report_summary() {
+  printf '\n## Summary\n\n'
+  printf -- '- Components: %s\n' "$COMPONENT_COUNT"
+  printf -- '- Failing components: %s\n' "$FAILED_COMPONENTS"
+  printf -- '- Components with unverified settings: %s\n' "$UNKNOWN_COMPONENTS"
+}
+
+main() {
+  validate_arguments "$@"
+  validate_configuration || return $?
+
+  COMPONENTS_FILE=$(mktemp)
+  trap 'rm -f "$COMPONENTS_FILE"' EXIT
+  fetch_component_pages || return $?
+
+  COMPONENT_COUNT=0
+  FAILED_COMPONENTS=0
+  UNKNOWN_COMPONENTS=0
+  render_report_header
+
+  while IFS= read -r component; do
+    [[ -n "$component" ]] || continue
+    COMPONENT_COUNT=$((COMPONENT_COUNT + 1))
+    render_component_markdown "$component"
+  done <"$COMPONENTS_FILE"
+
+  if [[ "$COMPONENT_COUNT" -eq 0 ]]; then
+    printf '| No components found | | | | | | | **❌ FAIL** |\n'
+    FAILED_COMPONENTS=1
+  fi
+
+  render_report_summary
+
+  if [[ "$FAILED_COMPONENTS" -gt 0 || "$UNKNOWN_COMPONENTS" -gt 0 ]]; then
+    return 1
+  fi
+}
+
+main "$@"
