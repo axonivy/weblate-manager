@@ -122,7 +122,7 @@ detect_i18next_files() {
 }
 
 main() {
-  local format_choice backend_choice=github repository_url push_url push_url_default push_branch
+  local format_choice backend_choice=$WEBLATE_DEFAULT_VCS repository_url push_url push_url_default push_branch
   local component_name component_slug license language_filter payload
   local response http_status response_body project_url task_url template_path
   local FILEMASK_DEFAULT= TEMPLATE_DEFAULT= GITHUB_TREE_AVAILABLE=false
@@ -215,7 +215,8 @@ main() {
     --argjson commit_pending_age "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE" \
     --arg merge_style "$WEBLATE_DEFAULT_MERGE_STYLE" \
     --arg language_regex "$language_filter" \
-    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:"contact",edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
+    --arg new_lang "$WEBLATE_DEFAULT_NEW_LANG" \
+    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:$new_lang,edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
 
   printf '\nComponent configuration to create:\n'
   jq . <<<"$payload"
