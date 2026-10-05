@@ -123,7 +123,7 @@ detect_i18next_files() {
 
 main() {
   local format_choice backend_choice=$WEBLATE_DEFAULT_VCS repository_url push_url push_url_default push_branch
-  local component_name component_slug license language_filter payload
+  local component_name component_slug license language_filter payload format_params
   local response http_status response_body project_url task_url template_path
   local FILEMASK_DEFAULT= TEMPLATE_DEFAULT= GITHUB_TREE_AVAILABLE=false
 
@@ -165,6 +165,19 @@ main() {
   case "$format_choice" in
     i18next|i18nextv4|yaml) ;;
     *) printf 'Unsupported format identifier: %s\n' "$format_choice" >&2; return 2 ;;
+  esac
+  case "$format_choice" in
+    i18next|i18nextv4)
+      format_params=$(jq -n \
+        --argjson indent "$WEBLATE_DEFAULT_JSON_INDENT" \
+        --arg style "$WEBLATE_DEFAULT_JSON_INDENT_STYLE" \
+        '{json_indent:$indent,json_indent_style:$style}')
+      ;;
+    yaml)
+      format_params=$(jq -n \
+        --argjson indent "$WEBLATE_DEFAULT_YAML_INDENT" \
+        '{yaml_indent:$indent}')
+      ;;
   esac
   prompt_required 'Source language code' en
   SOURCE_LANGUAGE=$REPLY
@@ -211,12 +224,13 @@ main() {
     --arg file_format "$format_choice" --arg vcs "$backend_choice" \
     --arg push "$push_url" --arg push_branch "$push_branch" \
     --arg source_language "$SOURCE_LANGUAGE" --arg license "$license" \
+    --argjson file_format_params "$format_params" \
     --argjson push_on_commit "$WEBLATE_DEFAULT_PUSH_ON_COMMIT" \
     --argjson commit_pending_age "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE" \
     --arg merge_style "$WEBLATE_DEFAULT_MERGE_STYLE" \
     --arg language_regex "$language_filter" \
     --arg new_lang "$WEBLATE_DEFAULT_NEW_LANG" \
-    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:$new_lang,edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
+    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,file_format_params:$file_format_params,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:$new_lang,edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
 
   printf '\nComponent configuration to create:\n'
   jq . <<<"$payload"

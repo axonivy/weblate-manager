@@ -69,6 +69,33 @@ fetch_component_pages() {
   done
 }
 
+fetch_component_languages() {
+  local component=$1 source_language=$2
+  local translations_url response
+
+  translations_url=$(jq -r '.translations_url // empty' <<<"$component")
+  if [[ -z "$translations_url" ]]; then
+    printf 'Component is missing its translations URL.\n' >&2
+    return 2
+  fi
+  if [[ "$translations_url" == /* ]]; then
+    translations_url="${API_ORIGIN}${translations_url}"
+  fi
+  if [[ "$translations_url" != "$API_ORIGIN"/* ]]; then
+    printf 'Refusing translations URL outside Weblate API origin: %s\n' "$translations_url" >&2
+    return 2
+  fi
+
+  response=$(curl --fail --silent --show-error \
+    --header "Authorization: Token ${WEBLATE_TOKEN}" \
+    --header 'Accept: application/json' \
+    "$translations_url")
+
+  jq -r --arg source "$source_language" \
+    '[.results[] | select(.language_code != null and .language_code != $source and .is_source != true) | .language_code] | join(", ")' \
+    <<<"$response"
+}
+
 markdown_cell() {
   printf '%s' "$1" | tr '\r\n' '  ' | sed 's/|/\\|/g'
 }
@@ -90,7 +117,7 @@ equality_status() {
   else
     printf 'FAIL'
   fi
-}
+  }
 
 license_status() {
   local license=$1
@@ -120,7 +147,6 @@ component_status() {
         ;;
     esac
   done
-
   printf '%s' "$result"
 }
 
@@ -138,14 +164,42 @@ render_report_header() {
   printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
   printf -- '- Expected license: Apache 2.0\n'
   printf -- '- Expected commit age: %s hours\n\n' "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE"
-  printf '| Component | Slug | Source language | License | Commit age (hours) | Push branch | Push on commit | VCS backend | New languages | Git strategy | Language filter | Result |\n'
-  printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- |\n'
+  printf '| Component | Slug | Languages | License | Commit age (hours) | Push branch | Push on commit | VCS backend | New languages | Git strategy | Language filter | File pattern | Indentation | Result |\n'
+  printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'
+}
+
+format_indentation() {
+  local file_format=$1 file_format_params=$2
+  local json_indent json_indent_style yaml_indent indentation_display indentation_check
+
+  case "$file_format" in
+    json|json-nested|webextension|i18next|i18nextv4|arb|go-i18n-json|go-i18n-json-v2|formatjs|gotext)
+      json_indent=$(jq -r 'if .json_indent == null then empty else (.json_indent | tostring) end' <<<"$file_format_params")
+      json_indent_style=$(jq -r '.json_indent_style // empty' <<<"$file_format_params")
+      indentation_display="${json_indent:-unknown} ${json_indent_style:-unknown}"
+      indentation_check=$(component_status \
+        "$(equality_status "$json_indent" "$WEBLATE_DEFAULT_JSON_INDENT")" \
+        "$(equality_status "$json_indent_style" "$WEBLATE_DEFAULT_JSON_INDENT_STYLE")")
+      ;;
+    yaml|ruby-yaml)
+      yaml_indent=$(jq -r 'if .yaml_indent == null then empty else (.yaml_indent | tostring) end' <<<"$file_format_params")
+      indentation_display="${yaml_indent:-unknown} spaces"
+      indentation_check=$(equality_status "$yaml_indent" "$WEBLATE_DEFAULT_YAML_INDENT")
+      ;;
+    *)
+      indentation_display=N/A
+      indentation_check=UNKNOWN
+      ;;
+  esac
+
+  printf '%s\t%s\n' "$indentation_display" "$indentation_check"
 }
 
 render_component_markdown() {
   local component=$1
   local name slug component_url license commit_age push_branch push_on_commit vcs new_lang merge_style language_filter
-  local filemask source_language translation_details
+  local filemask source_language file_format file_format_params
+  local filemask_display translated_languages languages_display indentation_display indentation_check
   local license_check age_check branch_check push_check vcs_check new_lang_check strategy_check language_check status
   local license_display commit_age_display branch_display push_display vcs_display new_lang_display merge_display language_display
 
@@ -164,8 +218,15 @@ render_component_markdown() {
   merge_style=$(jq -r '.merge_style // empty | ascii_downcase' <<<"$component")
   language_filter=$(jq -r '.language_regex // empty' <<<"$component")
   filemask=$(jq -r '.filemask // empty' <<<"$component")
+  file_format=$(jq -r '.file_format // empty' <<<"$component")
+  file_format_params=$(jq -c '.file_format_params // {}' <<<"$component")
   source_language=$(jq -r 'if (.source_language | type) == "object" then (.source_language.code // empty) else (.source_language // empty) end' <<<"$component")
-  translation_details="<details><summary>$(markdown_cell "${source_language:-unknown}")</summary><code>$(markdown_cell "${filemask:-unknown}")</code></details>"
+  filemask_display=${filemask:-unknown}
+  translated_languages=$(fetch_component_languages "$component" "$source_language")
+  languages_display="${source_language:-unknown} > ${translated_languages:-none}"
+
+  IFS=$'\t' read -r indentation_display indentation_check \
+    <<<"$(format_indentation "$file_format" "$file_format_params")"
 
   license_check=$(license_status "$license")
   age_check=$(equality_status "$commit_age" "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE")
@@ -175,7 +236,7 @@ render_component_markdown() {
   new_lang_check=$(equality_status "$new_lang" "$WEBLATE_DEFAULT_NEW_LANG")
   strategy_check=$(equality_status "$merge_style" "$WEBLATE_DEFAULT_MERGE_STYLE")
   language_check=$(equality_status "$language_filter" "$WEBLATE_DEFAULT_LANGUAGE_REGEX")
-  status=$(component_status "$license_check" "$age_check" "$branch_check" "$push_check" "$vcs_check" "$new_lang_check" "$strategy_check" "$language_check")
+  status=$(component_status "$license_check" "$age_check" "$branch_check" "$push_check" "$vcs_check" "$new_lang_check" "$indentation_check" "$strategy_check" "$language_check")
 
   if [[ "$status" == FAIL ]]; then
     FAILED_COMPONENTS=$((FAILED_COMPONENTS + 1))
@@ -192,10 +253,10 @@ render_component_markdown() {
   merge_display=${merge_style:-unknown}
   language_display=${language_filter:-unknown}
 
-  printf '| %s | `%s` | %s | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | `%s` (%s) | **%s** |\n' \
+  printf '| %s | `%s` | %s | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | `%s` (%s) | `%s` | %s (%s) | **%s** |\n' \
     "[$(markdown_link_label "$name")](<$(markdown_cell "$component_url")>)" \
     "$(markdown_cell "$slug")" \
-    "$translation_details" \
+    "$(markdown_cell "$languages_display")" \
     "$(markdown_cell "$license_display")" "$(format_status "$license_check")" \
     "$(markdown_cell "$commit_age_display")" "$(format_status "$age_check")" \
     "$(markdown_cell "$branch_display")" "$(format_status "$branch_check")" \
@@ -204,6 +265,8 @@ render_component_markdown() {
     "$(markdown_cell "$new_lang_display")" "$(format_status "$new_lang_check")" \
     "$(markdown_cell "$merge_display")" "$(format_status "$strategy_check")" \
     "$(markdown_cell "$language_display")" "$(format_status "$language_check")" \
+    "$(markdown_cell "$filemask_display")" \
+    "$(markdown_cell "$indentation_display")" "$(format_status "$indentation_check")" \
     "$(format_status "$status")"
 }
 
@@ -234,7 +297,7 @@ main() {
   done <"$COMPONENTS_FILE"
 
   if [[ "$COMPONENT_COUNT" -eq 0 ]]; then
-    printf '| No components found | | | | | | | | | | | **❌ FAIL** |\n'
+    printf '| No components found | | | | | | | | | | | | | **❌ FAIL** |\n'
     FAILED_COMPONENTS=1
   fi
 
@@ -245,4 +308,6 @@ main() {
   fi
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
