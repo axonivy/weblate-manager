@@ -164,8 +164,8 @@ render_report_header() {
   printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
   printf -- '- Expected license: Apache 2.0\n'
   printf -- '- Expected commit age: %s hours\n\n' "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE"
-  printf '| Component | Slug | Languages | License | Commit age (hours) | Push branch | Push on commit | VCS backend | New languages | Git strategy | Language filter | File pattern | Indentation | Result |\n'
-  printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'
+  printf '| Component | Slug | Languages | License | Commit age (hours) | Source branch | Push branch | Push on commit | VCS backend | New languages | Git strategy | Language filter | File pattern | Indentation | Result |\n'
+  printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'
 }
 
 format_indentation() {
@@ -197,11 +197,11 @@ format_indentation() {
 
 render_component_markdown() {
   local component=$1
-  local name slug component_url license commit_age push_branch push_on_commit vcs new_lang merge_style language_filter
+  local name slug component_url license commit_age source_branch push_branch push_on_commit vcs new_lang merge_style language_filter
   local filemask source_language file_format file_format_params
   local filemask_display translated_languages languages_display indentation_display indentation_check
-  local license_check age_check branch_check push_check vcs_check new_lang_check strategy_check language_check status
-  local license_display commit_age_display branch_display push_display vcs_display new_lang_display merge_display language_display
+  local license_check age_check source_branch_check branch_check push_check vcs_check new_lang_check strategy_check language_check status
+  local license_display commit_age_display source_branch_display branch_display push_display vcs_display new_lang_display merge_display language_display
 
   name=$(jq -r '.name // .slug // "(unnamed)"' <<<"$component")
   slug=$(jq -r '.slug // "(missing)"' <<<"$component")
@@ -211,6 +211,7 @@ render_component_markdown() {
   fi
   license=$(jq -r '.license // empty' <<<"$component")
   commit_age=$(jq -r 'if has("commit_pending_age") and .commit_pending_age != null then (.commit_pending_age | tostring) else empty end' <<<"$component")
+  source_branch=$(jq -r '.branch // empty' <<<"$component")
   push_branch=$(jq -r '.push_branch // empty' <<<"$component")
   push_on_commit=$(jq -r 'if has("push_on_commit") and .push_on_commit != null then (.push_on_commit | tostring | ascii_downcase) else empty end' <<<"$component")
   vcs=$(jq -r '.vcs // empty' <<<"$component")
@@ -230,13 +231,14 @@ render_component_markdown() {
 
   license_check=$(license_status "$license")
   age_check=$(equality_status "$commit_age" "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE")
+  source_branch_check=$(equality_status "$source_branch" "$WEBLATE_DEFAULT_SOURCE_BRANCH")
   branch_check=$(equality_status "$push_branch" "$WEBLATE_DEFAULT_PUSH_BRANCH")
   push_check=$(equality_status "$push_on_commit" "$WEBLATE_DEFAULT_PUSH_ON_COMMIT")
   vcs_check=$(equality_status "$vcs" "$WEBLATE_DEFAULT_VCS")
   new_lang_check=$(equality_status "$new_lang" "$WEBLATE_DEFAULT_NEW_LANG")
   strategy_check=$(equality_status "$merge_style" "$WEBLATE_DEFAULT_MERGE_STYLE")
   language_check=$(equality_status "$language_filter" "$WEBLATE_DEFAULT_LANGUAGE_REGEX")
-  status=$(component_status "$license_check" "$age_check" "$branch_check" "$push_check" "$vcs_check" "$new_lang_check" "$indentation_check" "$strategy_check" "$language_check")
+  status=$(component_status "$license_check" "$age_check" "$source_branch_check" "$branch_check" "$push_check" "$vcs_check" "$new_lang_check" "$indentation_check" "$strategy_check" "$language_check")
 
   if [[ "$status" == FAIL ]]; then
     FAILED_COMPONENTS=$((FAILED_COMPONENTS + 1))
@@ -246,6 +248,7 @@ render_component_markdown() {
 
   license_display=${license:-unknown}
   commit_age_display=${commit_age:-unknown}
+  source_branch_display=${source_branch:-unknown}
   branch_display=${push_branch:-unknown}
   push_display=${push_on_commit:-unknown}
   vcs_display=${vcs:-unknown}
@@ -253,12 +256,13 @@ render_component_markdown() {
   merge_display=${merge_style:-unknown}
   language_display=${language_filter:-unknown}
 
-  printf '| %s | `%s` | %s | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | `%s` (%s) | `%s` | %s (%s) | **%s** |\n' \
+  printf '| %s | `%s` | %s | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | %s (%s) | `%s` (%s) | `%s` | %s (%s) | **%s** |\n' \
     "[$(markdown_link_label "$name")](<$(markdown_cell "$component_url")>)" \
     "$(markdown_cell "$slug")" \
     "$(markdown_cell "$languages_display")" \
     "$(markdown_cell "$license_display")" "$(format_status "$license_check")" \
     "$(markdown_cell "$commit_age_display")" "$(format_status "$age_check")" \
+    "$(markdown_cell "$source_branch_display")" "$(format_status "$source_branch_check")" \
     "$(markdown_cell "$branch_display")" "$(format_status "$branch_check")" \
     "$(markdown_cell "$push_display")" "$(format_status "$push_check")" \
     "$(markdown_cell "$vcs_display")" "$(format_status "$vcs_check")" \
@@ -297,7 +301,7 @@ main() {
   done <"$COMPONENTS_FILE"
 
   if [[ "$COMPONENT_COUNT" -eq 0 ]]; then
-    printf '| No components found | | | | | | | | | | | | | **❌ FAIL** |\n'
+    printf '| No components found | | | | | | | | | | | | | | **❌ FAIL** |\n'
     FAILED_COMPONENTS=1
   fi
 
