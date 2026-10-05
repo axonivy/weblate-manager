@@ -113,10 +113,9 @@ update_component() {
 }
 
 create_update_plan() {
-  local plan_file=$1 key=$2 payload=$3
-  local component component_url slug old_value new_value count=0
+  local key=$1 payload=$2
+  local component component_url plan_entry plan='' slug old_value new_value count=0
 
-  : >"$plan_file"
   for component in "${TARGET_COMPONENTS[@]}"; do
     if ! jq -e --arg key "$key" 'has($key)' >/dev/null <<<"$component"; then
       slug=$(jq -r '.slug // .name // "(unnamed)"' <<<"$component")
@@ -127,29 +126,31 @@ create_update_plan() {
       return 2
     fi
 
-    jq -cn --argjson component "$component" --arg url "$component_url" \
+    if ! plan_entry=$(jq -cn --argjson component "$component" --arg url "$component_url" \
       --arg key "$key" --argjson patch "$payload" \
-      '{name:($component.name // $component.slug // "(unnamed)"),url:$url,old:$component[$key],patch:$patch}' \
-      >>"$plan_file" || return 2
+      '{name:($component.name // $component.slug // "(unnamed)"),url:$url,old:$component[$key],patch:$patch}'); then
+      return 2
+    fi
+    [[ -z "$plan" ]] || plan+=$'\n'
+    plan+="$plan_entry"
     count=$((count + 1))
   done
 
+  UPDATE_PLAN=$plan
   printf '\nPlanned update for %s component(s):\n' "$count"
   while IFS= read -r component; do
     slug=$(jq -r '.name' <<<"$component")
     old_value=$(jq -r '.old | tojson' <<<"$component")
     new_value=$(jq -r --arg key "$key" '.patch[$key] | tojson' <<<"$component")
     printf '  %s: %s -> %s\n' "$slug" "$old_value" "$new_value"
-  done <"$plan_file"
+  done <<<"$UPDATE_PLAN"
 }
 
 main() {
-  local plan_file components_json component answer failed=0 selection_status
+  local components_json component answer failed=0 selection_status
 
   weblate_validate_configuration || return $?
 
-  plan_file=$(mktemp)
-  trap "rm -f $(printf '%q' "$plan_file")" EXIT
   components_json=$(weblate_fetch_component_pages) || return $?
 
   COMPONENTS=()
@@ -171,7 +172,7 @@ main() {
   fi
 
   read_update_definition || return $?
-  create_update_plan "$plan_file" "$UPDATE_KEY" "$UPDATE_PAYLOAD" || return $?
+  create_update_plan "$UPDATE_KEY" "$UPDATE_PAYLOAD" || return $?
 
   read -r -p 'Send this update to Weblate? [y/N] ' answer || answer=
   case "$answer" in
@@ -181,7 +182,7 @@ main() {
 
   while IFS= read -r component; do
     update_component "$component" || failed=1
-  done <"$plan_file"
+  done <<<"$UPDATE_PLAN"
 
   return "$failed"
 }
