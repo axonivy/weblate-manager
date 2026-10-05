@@ -61,6 +61,31 @@ choose_component_scope() {
   fi
 }
 
+read_update_definition() {
+  local new_value
+
+  printf '\nCurrent component configuration:\n'
+  jq . <<<"$REFERENCE_CONFIG"
+  if ! IFS= read -r -p 'JSON key to change: ' UPDATE_KEY; then
+    printf 'No key entered.\n' >&2
+    return 1
+  fi
+  if ! jq -e --arg key "$UPDATE_KEY" 'has($key)' >/dev/null <<<"$REFERENCE_CONFIG"; then
+    printf 'Unknown key. Available top-level keys: %s\n' \
+      "$(jq -r 'keys | join(", ")' <<<"$REFERENCE_CONFIG")" >&2
+    return 2
+  fi
+
+  if ! IFS= read -r -p 'New value (JSON): ' new_value; then
+    printf 'No value entered.\n' >&2
+    return 1
+  fi
+  if ! UPDATE_PAYLOAD=$(jq -cn --arg key "$UPDATE_KEY" --argjson value "$new_value" '{($key):$value}'); then
+    printf 'Enter a valid JSON value.\n' >&2
+    return 2
+  fi
+}
+
 update_component() {
   local component=$1 slug response http_status response_body
   slug=$(jq -r '.name' <<<"$component")
@@ -119,7 +144,7 @@ create_update_plan() {
 }
 
 main() {
-  local components_file plan_file component key payload new_value answer failed=0 selection_status
+  local components_file plan_file component answer failed=0 selection_status
 
   weblate_validate_configuration || return $?
 
@@ -146,28 +171,8 @@ main() {
     return "$selection_status"
   fi
 
-  printf '\nCurrent component configuration:\n'
-  jq . <<<"$REFERENCE_CONFIG"
-  if ! IFS= read -r -p 'JSON key to change: ' key; then
-    printf 'No key entered.\n' >&2
-    return 1
-  fi
-  if ! jq -e --arg key "$key" 'has($key)' >/dev/null <<<"$REFERENCE_CONFIG"; then
-    printf 'Unknown key. Available top-level keys: %s\n' \
-      "$(jq -r 'keys | join(", ")' <<<"$REFERENCE_CONFIG")" >&2
-    return 2
-  fi
-
-  if ! IFS= read -r -p 'New value (JSON): ' new_value; then
-    printf 'No value entered.\n' >&2
-    return 1
-  fi
-  if ! payload=$(jq -cn --arg key "$key" --argjson value "$new_value" '{($key):$value}'); then
-    printf 'Enter a valid JSON value.\n' >&2
-    return 2
-  fi
-
-  create_update_plan "$plan_file" "$key" "$payload" || return $?
+  read_update_definition || return $?
+  create_update_plan "$plan_file" "$UPDATE_KEY" "$UPDATE_PAYLOAD" || return $?
 
   read -r -p 'Send this update to Weblate? [y/N] ' answer || answer=
   case "$answer" in
