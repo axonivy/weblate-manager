@@ -2,10 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-source "$SCRIPT_DIR/defaults.sh"
+source "$SCRIPT_DIR/weblate-common.sh"
 
-API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
-PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
 GITHUB_API_BASE=${GITHUB_API_URL:-https://api.github.com}
 
 usage() {
@@ -129,10 +127,7 @@ main() {
 
   if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then usage; return 0; fi
   if [[ $# -gt 0 ]]; then usage >&2; return 2; fi
-  if [[ -z "${WEBLATE_TOKEN:-}" ]]; then
-    printf 'WEBLATE_TOKEN is required.\n' >&2
-    return 2
-  fi
+  weblate_validate_configuration || return $?
   if ! command -v curl >/dev/null || ! command -v jq >/dev/null; then
     printf 'Both curl and jq are required.\n' >&2
     return 2

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-source "$SCRIPT_DIR/defaults.sh"
+source "$SCRIPT_DIR/weblate-common.sh"
 
 usage() {
   cat <<'EOF'
@@ -26,47 +26,6 @@ validate_arguments() {
     usage >&2
     exit 2
   fi
-}
-
-validate_configuration() {
-  if [[ -z "${WEBLATE_TOKEN:-}" ]]; then
-    printf 'WEBLATE_TOKEN is required.\n' >&2
-    return 2
-  fi
-
-  API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
-  PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
-  API_ORIGIN=$(printf '%s\n' "$API_BASE" | sed -E 's#^(https?://[^/]+).*#\1#')
-
-  if [[ "$API_ORIGIN" == "$API_BASE" ]]; then
-    printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
-    return 2
-  fi
-}
-
-fetch_component_pages() {
-  local next_url="${API_BASE%/}/projects/${PROJECT}/components/?page_size=1000"
-  local response
-
-  while [[ -n "$next_url" ]]; do
-    if [[ "$next_url" != "$API_ORIGIN"/* ]]; then
-      printf 'Refusing pagination URL outside Weblate API origin: %s\n' "$next_url" >&2
-      return 2
-    fi
-
-    response=$(curl --fail --silent --show-error \
-      --header "Authorization: Token ${WEBLATE_TOKEN}" \
-      --header 'Accept: application/json' \
-      "$next_url")
-
-    if ! jq -e '.results | type == "array"' >/dev/null <<<"$response"; then
-      printf 'Unexpected response from Weblate components API.\n' >&2
-      return 2
-    fi
-
-    jq -c '.results[]' <<<"$response" >>"$COMPONENTS_FILE"
-    next_url=$(jq -r '.next // empty' <<<"$response")
-  done
 }
 
 fetch_component_languages() {
@@ -283,11 +242,11 @@ render_report_summary() {
 
 main() {
   validate_arguments "$@"
-  validate_configuration || return $?
+  weblate_validate_configuration || return $?
 
   COMPONENTS_FILE=$(mktemp)
   trap 'rm -f "$COMPONENTS_FILE"' EXIT
-  fetch_component_pages || return $?
+  weblate_fetch_component_pages "$COMPONENTS_FILE" || return $?
 
   COMPONENT_COUNT=0
   FAILED_COMPONENTS=0
