@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_BASE=${WEBLATE_API_URL:-https://hosted.weblate.org/api}
-PROJECT=${WEBLATE_PROJECT:-axonivy}
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+source "$SCRIPT_DIR/defaults.sh"
+
+API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
+PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
 GITHUB_API_BASE=${GITHUB_API_URL:-https://api.github.com}
 
 usage() {
@@ -194,11 +197,11 @@ main() {
   prompt 'Repository push URL (enter - to disable direct push)' "$push_url_default"
   push_url=$REPLY
   [[ "$push_url" != '-' ]] || push_url=
-  prompt 'Push branch' translate
+  prompt 'Push branch' "$WEBLATE_DEFAULT_PUSH_BRANCH"
   push_branch=$REPLY
   prompt 'Translation license' Apache-2.0
   license=$REPLY
-  prompt 'Language filter' '^(en|de|ja|fr|es|it)$'
+  prompt 'Language filter' "$WEBLATE_DEFAULT_LANGUAGE_REGEX"
   language_filter=$REPLY
 
   payload=$(jq -n \
@@ -208,8 +211,11 @@ main() {
     --arg file_format "$format_choice" --arg vcs "$backend_choice" \
     --arg push "$push_url" --arg push_branch "$push_branch" \
     --arg source_language "$SOURCE_LANGUAGE" --arg license "$license" \
+    --argjson push_on_commit "$WEBLATE_DEFAULT_PUSH_ON_COMMIT" \
+    --argjson commit_pending_age "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE" \
+    --arg merge_style "$WEBLATE_DEFAULT_MERGE_STYLE" \
     --arg language_regex "$language_filter" \
-    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:"contact",edit_template:true,push_on_commit:true,commit_pending_age:168,merge_style:"rebase",auto_lock_error:true,language_regex:$language_regex}')
+    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:"contact",edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
 
   printf '\nComponent configuration to create:\n'
   jq . <<<"$payload"

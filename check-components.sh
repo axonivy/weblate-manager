@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-EXPECTED_COMMIT_AGE=168
-EXPECTED_PUSH_BRANCH=translate
-EXPECTED_PUSH_ON_COMMIT=true
-EXPECTED_MERGE_STYLE=rebase
-EXPECTED_LANGUAGE_FILTER='^(en|de|ja|fr|es|it)$'
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+source "$SCRIPT_DIR/defaults.sh"
 
 usage() {
   cat <<'EOF'
@@ -37,8 +34,8 @@ validate_configuration() {
     return 2
   fi
 
-  API_BASE=${WEBLATE_API_URL:-https://hosted.weblate.org/api}
-  PROJECT=${WEBLATE_PROJECT:-axonivy}
+  API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
+  PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
   API_ORIGIN=$(printf '%s\n' "$API_BASE" | sed -E 's#^(https?://[^/]+).*#\1#')
 
   if [[ "$API_ORIGIN" == "$API_BASE" ]]; then
@@ -140,7 +137,7 @@ render_report_header() {
   printf -- '- Project: `%s`\n' "$(markdown_cell "$PROJECT")"
   printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
   printf -- '- Expected license: Apache 2.0\n'
-  printf -- '- Expected commit age: %s hours\n\n' "$EXPECTED_COMMIT_AGE"
+  printf -- '- Expected commit age: %s hours\n\n' "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE"
   printf '| Component | Slug | License | Commit age (hours) | Push branch | Push on commit | Git strategy | Language filter | Result |\n'
   printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- |\n'
 }
@@ -165,11 +162,11 @@ render_component_markdown() {
   language_filter=$(jq -r '.language_regex // empty' <<<"$component")
 
   license_check=$(license_status "$license")
-  age_check=$(equality_status "$commit_age" "$EXPECTED_COMMIT_AGE")
-  branch_check=$(equality_status "$push_branch" "$EXPECTED_PUSH_BRANCH")
-  push_check=$(equality_status "$push_on_commit" "$EXPECTED_PUSH_ON_COMMIT")
-  strategy_check=$(equality_status "$merge_style" "$EXPECTED_MERGE_STYLE")
-  language_check=$(equality_status "$language_filter" "$EXPECTED_LANGUAGE_FILTER")
+  age_check=$(equality_status "$commit_age" "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE")
+  branch_check=$(equality_status "$push_branch" "$WEBLATE_DEFAULT_PUSH_BRANCH")
+  push_check=$(equality_status "$push_on_commit" "$WEBLATE_DEFAULT_PUSH_ON_COMMIT")
+  strategy_check=$(equality_status "$merge_style" "$WEBLATE_DEFAULT_MERGE_STYLE")
+  language_check=$(equality_status "$language_filter" "$WEBLATE_DEFAULT_LANGUAGE_REGEX")
   status=$(component_status "$license_check" "$age_check" "$branch_check" "$push_check" "$strategy_check" "$language_check")
 
   if [[ "$status" == FAIL ]]; then
