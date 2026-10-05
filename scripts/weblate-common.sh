@@ -22,11 +22,9 @@ fi
 }
 
 weblate_fetch_component_pages() {
-  local output_file=$1
   local next_url="${API_BASE%/}/projects/${PROJECT}/components/?page_size=1000"
   local response
 
-  : >"$output_file"
   while [[ -n "$next_url" ]]; do
     if [[ "$next_url" != "$API_ORIGIN"/* ]]; then
       printf 'Refusing pagination URL outside Weblate API origin: %s\n' "$next_url" >&2
@@ -43,7 +41,7 @@ weblate_fetch_component_pages() {
       return 2
     fi
 
-    jq -c '.results[]' <<<"$response" >>"$output_file"
+    jq -c '.results[]' <<<"$response"
     next_url=$(jq -r '.next // empty' <<<"$response")
   done
 }

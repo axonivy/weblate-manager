@@ -241,12 +241,11 @@ render_report_summary() {
 }
 
 main() {
+  local components_json component
   validate_arguments "$@"
   weblate_validate_configuration || return $?
 
-  COMPONENTS_FILE=$(mktemp)
-  trap 'rm -f "$COMPONENTS_FILE"' EXIT
-  weblate_fetch_component_pages "$COMPONENTS_FILE" || return $?
+  components_json=$(weblate_fetch_component_pages) || return $?
 
   COMPONENT_COUNT=0
   FAILED_COMPONENTS=0
@@ -257,7 +256,7 @@ main() {
     [[ -n "$component" ]] || continue
     COMPONENT_COUNT=$((COMPONENT_COUNT + 1))
     render_component_markdown "$component"
-  done <"$COMPONENTS_FILE"
+  done <<<"$components_json"
 
   if [[ "$COMPONENT_COUNT" -eq 0 ]]; then
     printf '| No components found | | | | | | | | | | | | | | **❌ FAIL** |\n'

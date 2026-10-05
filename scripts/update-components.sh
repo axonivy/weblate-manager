@@ -144,20 +144,19 @@ create_update_plan() {
 }
 
 main() {
-  local components_file plan_file component answer failed=0 selection_status
+  local plan_file components_json component answer failed=0 selection_status
 
   weblate_validate_configuration || return $?
 
-  components_file=$(mktemp)
   plan_file=$(mktemp)
-  trap "rm -f $(printf '%q' "$components_file") $(printf '%q' "$plan_file")" EXIT
-  weblate_fetch_component_pages "$components_file" || return $?
+  trap "rm -f $(printf '%q' "$plan_file")" EXIT
+  components_json=$(weblate_fetch_component_pages) || return $?
 
   COMPONENTS=()
   while IFS= read -r component; do
     [[ -n "$component" ]] || continue
     is_ignored_component "$component" || COMPONENTS+=("$component")
-  done <"$components_file"
+  done <<<"$components_json"
   if [[ "${#COMPONENTS[@]}" -eq 0 ]]; then
     printf 'No components available for updates.\n' >&2
     return 1
