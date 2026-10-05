@@ -8,7 +8,7 @@ GITHUB_API_BASE=${GITHUB_API_URL:-https://api.github.com}
 
 usage() {
   cat <<'EOF'
-Usage: WEBLATE_TOKEN=... ./onboard-component.sh
+Usage: WEBLATE_TOKEN=... ./scripts/onboard-component.sh
 
 Interactively creates a Weblate component. GitHub repository permissions,
 GitHub App connection, and webhooks are not changed by this script.

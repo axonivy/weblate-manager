@@ -6,13 +6,13 @@ source "$SCRIPT_DIR/weblate-common.sh"
 
 usage() {
   cat <<'EOF'
-Usage: WEBLATE_TOKEN=... ./check-components.sh [--help]
+Usage: WEBLATE_TOKEN=... ./scripts/check-components.sh [--help]
 
 Fetches every component in the axonivy Weblate project and prints a Markdown
 audit table. Override WEBLATE_API_URL or WEBLATE_PROJECT to target another
 Weblate instance or project. Save the report with:
 
-  WEBLATE_TOKEN=... ./check-components.sh > components.md
+  WEBLATE_TOKEN=... ./scripts/check-components.sh > components.md
 EOF
 }
 
