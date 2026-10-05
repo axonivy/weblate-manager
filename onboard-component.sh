@@ -122,7 +122,7 @@ detect_i18next_files() {
 }
 
 main() {
-  local format_choice backend_choice=$WEBLATE_DEFAULT_VCS repository_url push_url push_url_default push_branch
+  local format_choice backend_choice=$WEBLATE_DEFAULT_VCS repository_url repo_browser push_url push_url_default push_branch
   local component_name component_slug license language_filter payload format_params
   local response http_status response_body project_url task_url template_path
   local FILEMASK_DEFAULT= TEMPLATE_DEFAULT= GITHUB_TREE_AVAILABLE=false
@@ -147,6 +147,7 @@ main() {
   if [[ "$repository_url" != http://* && "$repository_url" != https://* && "$repository_url" != git@* ]]; then
     repository_url="git@github.com:${GITHUB_OWNER}/${GITHUB_REPOSITORY}.git"
   fi
+  repo_browser="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/blob/{{branch}}"
 
   prompt_required 'Repository branch' master
   BRANCH=$REPLY
@@ -220,6 +221,7 @@ main() {
   payload=$(jq -n \
     --arg name "$component_name" --arg slug "$component_slug" \
     --arg repo "$repository_url" --arg branch "$BRANCH" \
+    --arg repoweb "$repo_browser" \
     --arg filemask "$FILEMASK" --arg template "$template_path" \
     --arg file_format "$format_choice" --arg vcs "$backend_choice" \
     --arg push "$push_url" --arg push_branch "$push_branch" \
@@ -230,7 +232,7 @@ main() {
     --arg merge_style "$WEBLATE_DEFAULT_MERGE_STYLE" \
     --arg language_regex "$language_filter" \
     --arg new_lang "$WEBLATE_DEFAULT_NEW_LANG" \
-    '{name:$name,slug:$slug,repo:$repo,branch:$branch,filemask:$filemask,template:$template,file_format:$file_format,file_format_params:$file_format_params,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:$new_lang,edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
+    '{name:$name,slug:$slug,repo:$repo,branch:$branch,repoweb:$repoweb,filemask:$filemask,template:$template,file_format:$file_format,file_format_params:$file_format_params,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:$new_lang,edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
 
   printf '\nComponent configuration to create:\n'
   jq . <<<"$payload"
