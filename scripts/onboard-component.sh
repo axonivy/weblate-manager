@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR/weblate-common.sh"
+source "$SCRIPT_DIR/defaults.sh"
 
 GITHUB_API_BASE=${GITHUB_API_URL:-https://api.github.com}
 
@@ -128,10 +129,6 @@ main() {
   if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then usage; return 0; fi
   if [[ $# -gt 0 ]]; then usage >&2; return 2; fi
   weblate_validate_configuration || return $?
-  if ! command -v curl >/dev/null || ! command -v jq >/dev/null; then
-    printf 'Both curl and jq are required.\n' >&2
-    return 2
-  fi
 
   prompt_required 'GitHub repository URL or owner/repository'
   repository_url=$REPLY

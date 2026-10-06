@@ -149,8 +149,6 @@ create_update_plan() {
 main() {
   local components_json component answer failed=0 selection_status
 
-  weblate_validate_configuration || return $?
-
   components_json=$(weblate_fetch_component_pages) || return $?
 
   COMPONENTS=()
