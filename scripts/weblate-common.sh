@@ -1,8 +1,5 @@
-WEBLATE_COMMON_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-source "$WEBLATE_COMMON_DIR/defaults.sh"
-
-API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
-PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
+API_BASE=${WEBLATE_API_URL:-https://hosted.weblate.org/api}
+PROJECT=${WEBLATE_PROJECT:-axonivy}
 API_ORIGIN=
 
 weblate_validate_configuration() {
@@ -11,14 +8,12 @@ weblate_validate_configuration() {
     return 2
   fi
 
-  API_BASE=${WEBLATE_API_URL:-$WEBLATE_DEFAULT_API_URL}
-  PROJECT=${WEBLATE_PROJECT:-$WEBLATE_DEFAULT_PROJECT}
-if [[ "$API_BASE" =~ ^(https?://[^/]+)(/.*)?$ ]]; then
-  API_ORIGIN=${BASH_REMATCH[1]}
-else
-  printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
-  return 2
-fi
+  if [[ "$API_BASE" =~ ^(https?://[^/]+)(/.*)?$ ]]; then
+    API_ORIGIN=${BASH_REMATCH[1]}
+  else
+    printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
+    return 2
+  fi
 }
 
 weblate_fetch_component_pages() {

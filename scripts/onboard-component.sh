@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR/weblate-common.sh"
+source "$SCRIPT_DIR/defaults.sh"
 
 GITHUB_API_BASE=${GITHUB_API_URL:-https://api.github.com}
 
