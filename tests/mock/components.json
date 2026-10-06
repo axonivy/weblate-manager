@@ -25,7 +25,7 @@
       "source_language": {
         "code": "en"
       },
-      "translations_url": "/api/translations/sample-project/website/"
+      "translations_url": "https://hosted.weblate.org/api/components/axonivy/doc/translations/"
     },
     {
       "name": "Mobile App",
