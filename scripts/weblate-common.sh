@@ -10,6 +10,7 @@ weblate_validate_configuration() {
 }
 
 weblate_fetch_component_pages() {
+  weblate_validate_configuration
   local next_url="${API_BASE%/}/projects/${PROJECT}/components/?page_size=1000"
   local response
 

@@ -234,8 +234,6 @@ render_report_summary() {
 main() {
   local components_json component
   validate_arguments "$@"
-  weblate_validate_configuration || return $?
-
   components_json=$(weblate_fetch_component_pages) || return $?
 
   COMPONENT_COUNT=0
