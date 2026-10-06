@@ -1,0 +1,13 @@
+{
+  "vcs": "github",
+  "new_lang": "contact",
+  "json_indent": 2,
+  "json_indent_style": "spaces",
+  "yaml_indent": 2,
+  "commit_pending_age": 168,
+  "source_branch": "master",
+  "push_branch": "translate",
+  "push_on_commit": true,
+  "merge_style": "rebase",
+  "language_regex": "^(en|de|ja|fr|es|it)$"
+}

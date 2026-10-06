@@ -121,7 +121,7 @@ detect_i18next_files() {
 }
 
 main() {
-  local format_choice backend_choice=$WEBLATE_DEFAULT_VCS repository_url repo_browser push_url push_url_default push_branch
+  local format_choice backend_choice repository_url repo_browser push_url push_url_default push_branch
   local component_name component_slug license language_filter payload format_params
   local response http_status response_body project_url task_url template_path
   local FILEMASK_DEFAULT= TEMPLATE_DEFAULT= GITHUB_TREE_AVAILABLE=false
@@ -129,6 +129,7 @@ main() {
   if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then usage; return 0; fi
   if [[ $# -gt 0 ]]; then usage >&2; return 2; fi
   weblate_validate_configuration || return $?
+  backend_choice=$(weblate_default vcs)
 
   prompt_required 'GitHub repository URL or owner/repository'
   repository_url=$REPLY
@@ -162,13 +163,13 @@ main() {
   case "$format_choice" in
     i18next|i18nextv4)
       format_params=$(jq -n \
-        --argjson indent "$WEBLATE_DEFAULT_JSON_INDENT" \
-        --arg style "$WEBLATE_DEFAULT_JSON_INDENT_STYLE" \
+        --argjson indent "$(weblate_default json_indent)" \
+        --arg style "$(weblate_default json_indent_style)" \
         '{json_indent:$indent,json_indent_style:$style}')
       ;;
     yaml)
       format_params=$(jq -n \
-        --argjson indent "$WEBLATE_DEFAULT_YAML_INDENT" \
+        --argjson indent "$(weblate_default yaml_indent)" \
         '{yaml_indent:$indent}')
       ;;
   esac
@@ -203,11 +204,11 @@ main() {
   prompt 'Repository push URL (enter - to disable direct push)' "$push_url_default"
   push_url=$REPLY
   [[ "$push_url" != '-' ]] || push_url=
-  prompt 'Push branch' "$WEBLATE_DEFAULT_PUSH_BRANCH"
+  prompt 'Push branch' "$(weblate_default push_branch)"
   push_branch=$REPLY
   prompt 'Translation license' Apache-2.0
   license=$REPLY
-  prompt 'Language filter' "$WEBLATE_DEFAULT_LANGUAGE_REGEX"
+  prompt 'Language filter' "$(weblate_default language_regex)"
   language_filter=$REPLY
 
   payload=$(jq -n \
@@ -219,11 +220,11 @@ main() {
     --arg push "$push_url" --arg push_branch "$push_branch" \
     --arg source_language "$SOURCE_LANGUAGE" --arg license "$license" \
     --argjson file_format_params "$format_params" \
-    --argjson push_on_commit "$WEBLATE_DEFAULT_PUSH_ON_COMMIT" \
-    --argjson commit_pending_age "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE" \
-    --arg merge_style "$WEBLATE_DEFAULT_MERGE_STYLE" \
+    --argjson push_on_commit "$(weblate_default push_on_commit)" \
+    --argjson commit_pending_age "$(weblate_default commit_pending_age)" \
+    --arg merge_style "$(weblate_default merge_style)" \
     --arg language_regex "$language_filter" \
-    --arg new_lang "$WEBLATE_DEFAULT_NEW_LANG" \
+    --arg new_lang "$(weblate_default new_lang)" \
     '{name:$name,slug:$slug,repo:$repo,branch:$branch,repoweb:$repoweb,filemask:$filemask,template:$template,file_format:$file_format,file_format_params:$file_format_params,vcs:$vcs,push:$push,push_branch:$push_branch,source_language:$source_language,license:$license,new_lang:$new_lang,edit_template:true,push_on_commit:$push_on_commit,commit_pending_age:$commit_pending_age,merge_style:$merge_style,auto_lock_error:true,language_regex:$language_regex}')
 
   printf '\nComponent configuration to create:\n'

@@ -96,7 +96,7 @@ render_report_header() {
   printf -- '- Project: `%s`\n' "$(markdown_cell "$PROJECT")"
   printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
   printf -- '- Expected license: Apache 2.0\n'
-  printf -- '- Expected commit age: %s hours\n\n' "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE"
+  printf -- '- Expected commit age: %s hours\n\n' "$(weblate_default commit_pending_age)"
   printf '| Component | Slug | Languages | License | Commit age (hours) | Source branch | Push branch | Push on commit | VCS backend | New languages | Git strategy | Language filter | File pattern | Indentation | Result |\n'
   printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'
 }
@@ -111,13 +111,13 @@ format_indentation() {
       json_indent_style=$(jq -r '.json_indent_style // empty' <<<"$file_format_params")
       indentation_display="${json_indent:-unknown} ${json_indent_style:-unknown}"
       indentation_check=$(component_status \
-        "$(equality_status "$json_indent" "$WEBLATE_DEFAULT_JSON_INDENT")" \
-        "$(equality_status "$json_indent_style" "$WEBLATE_DEFAULT_JSON_INDENT_STYLE")")
+        "$(equality_status "$json_indent" "$(weblate_default json_indent)")" \
+        "$(equality_status "$json_indent_style" "$(weblate_default json_indent_style)")")
       ;;
     yaml|ruby-yaml)
       yaml_indent=$(jq -r 'if .yaml_indent == null then empty else (.yaml_indent | tostring) end' <<<"$file_format_params")
       indentation_display="${yaml_indent:-unknown} spaces"
-      indentation_check=$(equality_status "$yaml_indent" "$WEBLATE_DEFAULT_YAML_INDENT")
+      indentation_check=$(equality_status "$yaml_indent" "$(weblate_default yaml_indent)")
       ;;
     *)
       indentation_display=N/A
@@ -163,14 +163,14 @@ render_component_markdown() {
     <<<"$(format_indentation "$file_format" "$file_format_params")"
 
   license_check=$(license_status "$license")
-  age_check=$(equality_status "$commit_age" "$WEBLATE_DEFAULT_COMMIT_PENDING_AGE")
-  source_branch_check=$(equality_status "$source_branch" "$WEBLATE_DEFAULT_SOURCE_BRANCH")
-  branch_check=$(equality_status "$push_branch" "$WEBLATE_DEFAULT_PUSH_BRANCH")
-  push_check=$(equality_status "$push_on_commit" "$WEBLATE_DEFAULT_PUSH_ON_COMMIT")
-  vcs_check=$(equality_status "$vcs" "$WEBLATE_DEFAULT_VCS")
-  new_lang_check=$(equality_status "$new_lang" "$WEBLATE_DEFAULT_NEW_LANG")
-  strategy_check=$(equality_status "$merge_style" "$WEBLATE_DEFAULT_MERGE_STYLE")
-  language_check=$(equality_status "$language_filter" "$WEBLATE_DEFAULT_LANGUAGE_REGEX")
+  age_check=$(equality_status "$commit_age" "$(weblate_default commit_pending_age)")
+  source_branch_check=$(equality_status "$source_branch" "$(weblate_default source_branch)")
+  branch_check=$(equality_status "$push_branch" "$(weblate_default push_branch)")
+  push_check=$(equality_status "$push_on_commit" "$(weblate_default push_on_commit)")
+  vcs_check=$(equality_status "$vcs" "$(weblate_default vcs)")
+  new_lang_check=$(equality_status "$new_lang" "$(weblate_default new_lang)")
+  strategy_check=$(equality_status "$merge_style" "$(weblate_default merge_style)")
+  language_check=$(equality_status "$language_filter" "$(weblate_default language_regex)")
   status=$(component_status "$license_check" "$age_check" "$source_branch_check" "$branch_check" "$push_check" "$vcs_check" "$new_lang_check" "$indentation_check" "$strategy_check" "$language_check")
 
   if [[ "$status" == FAIL ]]; then

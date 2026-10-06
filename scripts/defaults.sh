@@ -1,11 +1,7 @@
-WEBLATE_DEFAULT_VCS=github
-WEBLATE_DEFAULT_NEW_LANG=contact
-WEBLATE_DEFAULT_JSON_INDENT=2
-WEBLATE_DEFAULT_JSON_INDENT_STYLE=spaces
-WEBLATE_DEFAULT_YAML_INDENT=2
-WEBLATE_DEFAULT_COMMIT_PENDING_AGE=168
-WEBLATE_DEFAULT_SOURCE_BRANCH=master
-WEBLATE_DEFAULT_PUSH_BRANCH=translate
-WEBLATE_DEFAULT_PUSH_ON_COMMIT=true
-WEBLATE_DEFAULT_MERGE_STYLE=rebase
-WEBLATE_DEFAULT_LANGUAGE_REGEX='^(en|de|ja|fr|es|it)$'
+WEBLATE_DEFAULTS_FILE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/defaults.json"
+
+weblate_default() {
+  jq -r --arg key "$1" \
+    'if has($key) then .[$key] else error("Missing Weblate default: " + $key) end' \
+    "$WEBLATE_DEFAULTS_FILE"
+}
