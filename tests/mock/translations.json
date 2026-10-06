@@ -1,0 +1,25 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "language": {
+        "id": 31,
+        "code": "en",
+        "name": "English"
+      },
+      "language_code": "en",
+      "is_source": true
+    },
+    {
+      "language": {
+        "id": 49,
+        "code": "ja",
+        "name": "Japanese"
+      },
+      "language_code": "ja",
+      "is_source": false
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "count": 2,
+  "next": null,
+  "results": [
+    {
+      "name": "Website",
+      "slug": "website",
+      "web_url": "https://weblate.example/projects/sample-project/website/",
+      "url": "/api/components/sample-project/website/",
+      "license": "Apache-2.0",
+      "commit_pending_age": 168,
+      "branch": "master",
+      "push_branch": "translate",
+      "push_on_commit": true,
+      "vcs": "github",
+      "new_lang": "contact",
+      "merge_style": "rebase",
+      "language_regex": "^(en|de|ja|fr|es|it)$",
+      "filemask": "locales/*.json",
+      "file_format": "i18next",
+      "file_format_params": {
+        "json_indent": 2,
+        "json_indent_style": "spaces"
+      },
+      "source_language": {
+        "code": "en"
+      },
+      "translations_url": "https://hosted.weblate.org/api/components/axonivy/doc/translations/"
+    },
+    {
+      "name": "Mobile App",
+      "slug": "mobile-app",
+      "web_url": "https://weblate.example/projects/sample-project/mobile-app/",
+      "url": "/api/components/sample-project/mobile-app/",
+      "license": "Apache-2.0",
+      "commit_pending_age": 168,
+      "branch": "master",
+      "push_branch": "translate",
+      "push_on_commit": true,
+      "vcs": "github",
+      "new_lang": "contact",
+      "merge_style": "rebase",
+      "language_regex": "^(en|de|ja|fr|es|it)$",
+      "filemask": "translations/*.yaml",
+      "file_format": "yaml",
+      "file_format_params": {
+        "yaml_indent": 2
+      },
+      "source_language": {
+        "code": "en"
+      },
+      "translations_url": "/api/translations/sample-project/mobile-app/"
+    }
+  ]
+}
