@@ -142,7 +142,7 @@ main() {
   fi
   repo_browser="https://github.com/${GITHUB_OWNER}/${GITHUB_REPOSITORY}/blob/{{branch}}"
 
-  prompt_required 'Repository branch' master
+  prompt_required 'Repository branch' $(weblate_default "source_branch")
   BRANCH=$REPLY
   prompt_required 'Component name' "$GITHUB_REPOSITORY"
   component_name=$REPLY

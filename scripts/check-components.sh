@@ -50,20 +50,6 @@ equality_status() {
   else
     printf 'FAIL'
   fi
-  }
-
-license_status() {
-  local license=$1
-  local normalized_license
-  normalized_license=$(printf '%s' "$license" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
-
-  if [[ -z "$license" ]]; then
-    printf 'UNKNOWN'
-  elif [[ "$normalized_license" == *apache*2* ]]; then
-    printf 'PASS'
-  else
-    printf 'FAIL'
-  fi
 }
 
 component_status() {
@@ -165,7 +151,7 @@ render_component_markdown() {
   IFS=$'\t' read -r indentation_display indentation_check \
     <<<"$(format_indentation "$file_format" "$file_format_params")"
 
-  license_check=$(license_status "$license")
+  license_check=$(equality_status "$license" "$(weblate_default license)")
   age_check=$(equality_status "$commit_age" "$(weblate_default commit_pending_age)")
   source_branch_check=$(equality_status "$source_branch" "$(weblate_default source_branch)")
   branch_check=$(equality_status "$push_branch" "$(weblate_default push_branch)")
