@@ -1,5 +1,6 @@
 {
   "vcs": "github",
+  "license": "Apache-2.0",
   "new_lang": "contact",
   "json_indent": 2,
   "json_indent_style": "spaces",

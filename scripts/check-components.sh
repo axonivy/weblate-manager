@@ -95,7 +95,7 @@ render_report_header() {
   printf '# Weblate component audit\n\n'
   printf -- '- Project: `%s`\n' "$(markdown_cell "$PROJECT")"
   printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
-  printf -- '- Expected license: Apache 2.0\n'
+  printf -- '- Expected license: %s\n' "$(weblate_default license)"
   printf -- '- Expected commit age: %s hours\n\n' "$(weblate_default commit_pending_age)"
   printf '| Component | Slug | Languages | License | Commit age (hours) | Source branch | Push branch | Push on commit | VCS backend | New languages | Git strategy | Language filter | File pattern | Indentation | Result |\n'
   printf '| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n'

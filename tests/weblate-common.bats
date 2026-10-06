@@ -32,6 +32,7 @@ setup_mock_weblate() {
   [ "$(jq -r -s 'length' <<<"$output")" -eq 2 ]
   [ "$(jq -r -s '.[0].slug' <<<"$output")" = "website" ]
   [ "$(jq -r -s '.[1].name' <<<"$output")" = "Mobile App" ]
+  [ "$(jq -r -s '.[0].license' <<<"$output")" = "$(weblate_default license)" ]
   [ "$(jq -r -s '.[0].vcs' <<<"$output")" = "$(weblate_default vcs)" ]
   [ "$(jq -r -s '.[0].new_lang' <<<"$output")" = "$(weblate_default new_lang)" ]
   [ "$(jq -r -s '.[0].file_format_params.json_indent' <<<"$output")" -eq "$(weblate_default json_indent)" ]

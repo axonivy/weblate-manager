@@ -206,7 +206,7 @@ main() {
   [[ "$push_url" != '-' ]] || push_url=
   prompt 'Push branch' "$(weblate_default push_branch)"
   push_branch=$REPLY
-  prompt 'Translation license' Apache-2.0
+  prompt 'Translation license' "$(weblate_default license)"
   license=$REPLY
   prompt 'Language filter' "$(weblate_default language_regex)"
   language_filter=$REPLY
