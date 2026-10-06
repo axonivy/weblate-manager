@@ -15,10 +15,7 @@ weblate_fetch_component_pages() {
   local response
 
   while [[ -n "$next_url" ]]; do
-    response=$(curl --fail --silent --show-error \
-      --header "Authorization: Token ${WEBLATE_TOKEN}" \
-      --header 'Accept: application/json' \
-      "$next_url")
+    response=$(weblate_fetch "$next_url")
 
     if ! jq -e '.results | type == "array"' >/dev/null <<<"$response"; then
       printf 'Unexpected response from Weblate components API.\n' >&2
@@ -28,6 +25,27 @@ weblate_fetch_component_pages() {
     jq -c '.results[]' <<<"$response"
     next_url=$(jq -r '.next // empty' <<<"$response")
   done
+}
+
+weblate_fetch() {
+  local url=$1
+  curl --fail --silent --show-error \
+      --header "Authorization: Token ${WEBLATE_TOKEN}" \
+      --header 'Accept: application/json' \
+      "$url"
+}
+
+weblate_fetch_component_languages() {
+  local component=$1 source_language=$2
+  local translations_url url response
+
+  translations_url=$(jq -r '.translations_url // empty' <<<"$component")
+  url=$(weblate_url "$translations_url")
+  response=$(weblate_fetch "$url")
+
+  jq -r --arg source "$source_language" \
+    '[.results[] | select(.language_code != null and .language_code != $source and .is_source != true) | .language_code] | join(", ")' \
+    <<<"$response"
 }
 
 weblate_component_api_url() {

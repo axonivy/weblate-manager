@@ -29,23 +29,6 @@ validate_arguments() {
   fi
 }
 
-fetch_component_languages() {
-  local component=$1 source_language=$2
-  local translations_url url response
-
-  translations_url=$(jq -r '.translations_url // empty' <<<"$component")
-  url=$(weblate_url "$translations_url")
-
-  response=$(curl --fail --silent --show-error \
-    --header "Authorization: Token ${WEBLATE_TOKEN}" \
-    --header 'Accept: application/json' \
-    "$url")
-
-  jq -r --arg source "$source_language" \
-    '[.results[] | select(.language_code != null and .language_code != $source and .is_source != true) | .language_code] | join(", ")' \
-    <<<"$response"
-}
-
 markdown_cell() {
   printf '%s' "$1" | tr '\r\n' '  ' | sed 's/|/\\|/g'
 }
@@ -173,7 +156,7 @@ render_component_markdown() {
   file_format_params=$(jq -c '.file_format_params // {}' <<<"$component")
   source_language=$(jq -r 'if (.source_language | type) == "object" then (.source_language.code // empty) else (.source_language // empty) end' <<<"$component")
   filemask_display=${filemask:-unknown}
-  translated_languages=$(fetch_component_languages "$component" "$source_language")
+  translated_languages=$(weblate_fetch_component_languages "$component" "$source_language")
   languages_display="${source_language:-unknown} > ${translated_languages:-none}"
 
   IFS=$'\t' read -r indentation_display indentation_check \
