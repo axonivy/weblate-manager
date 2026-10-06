@@ -17,6 +17,6 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./check-components.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          ./scripts/check-components.sh | tee -a "$GITHUB_STEP_SUMMARY"
         env:
           WEBLATE_TOKEN: ${{ secrets.WEBLATE_TOKEN }}
