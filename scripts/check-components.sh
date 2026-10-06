@@ -31,25 +31,15 @@ validate_arguments() {
 
 fetch_component_languages() {
   local component=$1 source_language=$2
-  local translations_url response
+  local translations_url url response
 
   translations_url=$(jq -r '.translations_url // empty' <<<"$component")
-  if [[ -z "$translations_url" ]]; then
-    printf 'Component is missing its translations URL.\n' >&2
-    return 2
-  fi
-  if [[ "$translations_url" == /* ]]; then
-    translations_url="${API_ORIGIN}${translations_url}"
-  fi
-  if [[ "$translations_url" != "$API_ORIGIN"/* ]]; then
-    printf 'Refusing translations URL outside Weblate API origin: %s\n' "$translations_url" >&2
-    return 2
-  fi
+  url=$(weblate_url "$translations_url")
 
   response=$(curl --fail --silent --show-error \
     --header "Authorization: Token ${WEBLATE_TOKEN}" \
     --header 'Accept: application/json' \
-    "$translations_url")
+    "$url")
 
   jq -r --arg source "$source_language" \
     '[.results[] | select(.language_code != null and .language_code != $source and .is_source != true) | .language_code] | join(", ")' \

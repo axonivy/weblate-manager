@@ -7,13 +7,6 @@ weblate_validate_configuration() {
     printf 'WEBLATE_TOKEN is required.\n' >&2
     return 2
   fi
-
-  if [[ "$API_BASE" =~ ^(https?://[^/]+)(/.*)?$ ]]; then
-    API_ORIGIN=${BASH_REMATCH[1]}
-  else
-    printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
-    return 2
-  fi
 }
 
 weblate_fetch_component_pages() {
@@ -21,11 +14,6 @@ weblate_fetch_component_pages() {
   local response
 
   while [[ -n "$next_url" ]]; do
-    if [[ "$next_url" != "$API_ORIGIN"/* ]]; then
-      printf 'Refusing pagination URL outside Weblate API origin: %s\n' "$next_url" >&2
-      return 2
-    fi
-
     response=$(curl --fail --silent --show-error \
       --header "Authorization: Token ${WEBLATE_TOKEN}" \
       --header 'Accept: application/json' \
@@ -44,11 +32,24 @@ weblate_fetch_component_pages() {
 weblate_component_api_url() {
   local component=$1 url
   url=$(jq -r '.url // empty' <<<"$component")
+  weblate_url "$url"
+}
+
+weblate_url() {
+  local url=$1
+  if [[ -z "${API_ORIGIN:-}" ]]; then
+    if [[ "$API_BASE" =~ ^(https?://[^/]+)(/.*)?$ ]]; then
+      API_ORIGIN=${BASH_REMATCH[1]}
+    else
+      printf 'WEBLATE_API_URL must be an absolute HTTP(S) URL.\n' >&2
+      return 2
+    fi
+  fi
   if [[ "$url" == /* ]]; then
     url="${API_ORIGIN}${url}"
   fi
   if [[ "$url" != "$API_ORIGIN"/* ]]; then
-    printf 'Refusing component API URL outside Weblate API origin: %s\n' "$url" >&2
+    printf 'Refusing API URL outside Weblate API origin: %s\n' "$url" >&2
     return 2
   fi
   printf '%s' "$url"
