@@ -3,20 +3,20 @@
 How to add translatable components to [Hosted Weblate](https://hosted.weblate.org/projects/axonivy/#components).
 
 
-## 1. Manual Github Setup
+## 1. Manual GitHub Setup
 
-Github access setup for weblate is not automated, and needs to beconfigured as before weblate onboarding as follows.
+GitHub access setup for Weblate is not automated and must be configured before Weblate onboarding as follows.
 
 ### Invite Collaborator
 
 1. Ensure the GitHub repository is public, as required by the free Libre hosting plan described in the source guide.
-2. Add the **Weblate (bot)** account as a repository collaborator with `write` access. It takes ~5mins until weblate accepts it.
+2. Add the **Weblate (bot)** account as a repository collaborator with `write` access. It can take about 5 minutes for Weblate to accept the invitation.
 
 ![collaborator:Weblate (bot)](img/01-github-collaborator.png)
 
 ### Setup Webhook
 
-1. Create a new webook for the URI `https://hosted.weblate.org/hooks/github/`
+1. Create a new webhook for the URI `https://hosted.weblate.org/hooks/github/`
 
 Stick to defaults:
 - Payload URL: `https://hosted.weblate.org/hooks/github/`
@@ -34,15 +34,14 @@ After creating the webhook, check its recent deliveries and confirm Weblate rece
 
 After Github setup, the onboarding to Weblate can be completed by running the [onboard-component.sh](../scripts/onboard-component.sh) script.
 
-In order to run it, you need an API key from Weblate.
-You can lease one in your users settings on Weblate.
-Add it to your env variables before running the script.
+To run the script, generate an API token in your Weblate user settings.
+Pass it through the `WEBLATE_TOKEN` environment variable when invoking the script.
 
-`WEBLATE_TOKEN=abc_1234xyz ./script/onboard-component.sh`
+`WEBLATE_TOKEN=abc_1234xyz ./scripts/onboard-component.sh`
 
 ## 3. Manual Github Finalization
 
-Add a batch to your README.md, so that users can easily access translations.
+Add a badge to your README.md so that users can easily access translations.
 
 ⚠️ The batch is mandatory, as part of the free hosting agreement.
 
