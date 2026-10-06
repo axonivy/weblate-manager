@@ -7,6 +7,6 @@
   [ "$status" -eq 0 ]
   [[ "$output" == *'<summary>defaults.json</summary>'* ]]
   [[ "$output" == *'```json'* ]]
-  [[ "$output" == *"$(cat "$BATS_TEST_DIRNAME/../scripts/defaults.json")"* ]]
+  [[ "$output" == *"$(cat "$BATS_TEST_DIRNAME/../defaults.json")"* ]]
   [[ "$output" == *'</details>'* ]]
 }

@@ -95,8 +95,7 @@ render_report_header() {
   printf '# Weblate component audit\n\n'
   printf -- '- Project: `%s`\n' "$(markdown_cell "$PROJECT")"
   printf -- '- Generated: %s\n' "$(date -u '+%Y-%m-%d %H:%M UTC')"
-  printf '<details>\n'
-  printf '<summary>defaults.json</summary>\n\n'
+  printf '<details><summary>defaults.json</summary>\n\n'
   printf '```json\n'
   cat "$WEBLATE_DEFAULTS_FILE"
   printf '```\n'
